@@ -22,10 +22,9 @@ import org.apache.flink.api.common.typeinfo.{AtomicType, TypeInformation}
 import org.apache.flink.api.java.typeutils.{PojoTypeInfo, RowTypeInfo, TupleTypeInfo}
 import org.apache.flink.api.scala.typeutils.CaseClassTypeInfo
 import org.apache.flink.configuration.BatchExecutionOptions
-import org.apache.flink.core.testutils.FlinkMatchers.containsMessage
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonParseException
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode
-import org.apache.flink.streaming.api.{environment, TimeCharacteristic}
+import org.apache.flink.streaming.api.{TimeCharacteristic, environment}
 import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.streaming.api.environment.{LocalStreamEnvironment, StreamExecutionEnvironment}
 import org.apache.flink.streaming.api.scala.{StreamExecutionEnvironment => ScalaStreamExecEnv}
@@ -56,7 +55,7 @@ import org.apache.flink.table.planner.plan.nodes.physical.FlinkPhysicalRel
 import org.apache.flink.table.planner.plan.optimize.program._
 import org.apache.flink.table.planner.plan.stats.FlinkStatistic
 import org.apache.flink.table.planner.plan.utils.FlinkRelOptUtil
-import org.apache.flink.table.planner.runtime.utils.{TestingAppendTableSink, TestingRetractTableSink, TestingUpsertTableSink}
+import org.apache.flink.table.planner.runtime.utils.{BatchTestBase, TestingAppendTableSink, TestingRetractTableSink, TestingUpsertTableSink}
 import org.apache.flink.table.planner.sinks.CollectRowTableSink
 import org.apache.flink.table.planner.utils.PlanKind.PlanKind
 import org.apache.flink.table.planner.utils.TableTestUtil.{replaceNodeIdInOperator, replaceStageId, replaceStreamNodeId}
@@ -79,35 +78,28 @@ import org.apache.calcite.avatica.util.TimeUnit
 import org.apache.calcite.rel.RelNode
 import org.apache.calcite.sql.{SqlExplainLevel, SqlIntervalQualifier}
 import org.apache.calcite.sql.parser.SqlParserPos
-import org.junit.Assert.{assertEquals, assertThat, assertTrue, fail}
-import org.junit.Rule
-import org.junit.rules.{ExpectedException, TemporaryFolder, TestName}
+import org.assertj.core.api.Assertions.{assertThat, assertThatExceptionOfType, fail}
+import org.junit.jupiter.api.{BeforeEach, TestInfo}
+import org.junit.jupiter.api.io.TempDir
 
 import java.io.{File, IOException}
 import java.net.URL
-import java.nio.file.{Files, Paths}
+import java.nio.file.{Files, Path, Paths}
 import java.time.Duration
 import java.util.Collections
 
 /** Test base for testing Table API / SQL plans. */
 abstract class TableTestBase {
 
-  // used for accurate exception information checking.
-  val expectedException: ExpectedException = ExpectedException.none()
+  @TempDir
+  var tempFolder: Path = _
 
-  // used for get test case method name
-  val testName: TestName = new TestName
+  var testInfo: TestInfo = _
 
-  val _tempFolder = new TemporaryFolder
-
-  @Rule
-  def tempFolder: TemporaryFolder = _tempFolder
-
-  @Rule
-  def thrown: ExpectedException = expectedException
-
-  @Rule
-  def name: TestName = testName
+  @BeforeEach
+  def before(testInfo: TestInfo): Unit = {
+    this.testInfo = testInfo
+  }
 
   def streamTestUtil(tableConfig: TableConfig = TableConfig.getDefault): StreamTableTestUtil =
     StreamTableTestUtil(this, tableConfig = tableConfig)
@@ -126,10 +118,8 @@ abstract class TableTestBase {
   def verifyTableEquals(expected: Table, actual: Table): Unit = {
     val expectedString = FlinkRelOptUtil.toString(TableTestUtil.toRelNode(expected))
     val actualString = FlinkRelOptUtil.toString(TableTestUtil.toRelNode(actual))
-    assertEquals(
-      "Logical plans do not match",
-      LogicalPlanFormatUtils.formatTempTableId(expectedString),
-      LogicalPlanFormatUtils.formatTempTableId(actualString))
+    assertThat(LogicalPlanFormatUtils.formatTempTableId(actualString))
+      .isEqualTo(LogicalPlanFormatUtils.formatTempTableId(expectedString))
   }
 }
 
@@ -622,7 +612,7 @@ abstract class TableTestUtilBase(test: TableTestBase, isStreamingMode: Boolean) 
     val optimizedPlan = getOptimizedRelPlan(Array(optimizedRel), Array.empty, withRowType = false)
     val result = notExpected.forall(!optimizedPlan.contains(_))
     val message = s"\nactual plan:\n$optimizedPlan\nnot expected:\n${notExpected.mkString(", ")}"
-    assertTrue(message, result)
+    assertThat(result).isEqualTo(message)
   }
 
   /**
@@ -752,14 +742,10 @@ abstract class TableTestUtilBase(test: TableTestBase, isStreamingMode: Boolean) 
       sql: String,
       message: String,
       clazz: Class[_ <: Throwable] = classOf[ValidationException]): Unit = {
-    try {
-      verifyExplain(sql)
-      fail(s"Expected a $clazz, but no exception is thrown.")
-    } catch {
-      case e: Throwable =>
-        assertTrue(clazz.isAssignableFrom(e.getClass))
-        assertThat(e, containsMessage(message))
-    }
+
+    assertThatExceptionOfType(clazz)
+      .isThrownBy(() => verifyExplain(sql))
+      .withMessageContaining(message)
   }
 
   /**
@@ -827,7 +813,7 @@ abstract class TableTestUtilBase(test: TableTestBase, isStreamingMode: Boolean) 
     // between the test class name and the result file name
     val clazz = test.getClass
     val testClassDirPath = clazz.getName.replaceAll("\\.", "/") + "_jsonplan"
-    val testMethodFileName = test.testName.getMethodName + ".out"
+    val testMethodFileName = test.testInfo.getDisplayName + ".out"
     val resourceTestFilePath = s"/$testClassDirPath/$testMethodFileName"
     val plannerDirPath = clazz.getResource("/").getFile.replace("/target/test-classes/", "")
     val file = new File(s"$plannerDirPath/src/test/resources$resourceTestFilePath")
@@ -835,28 +821,24 @@ abstract class TableTestUtilBase(test: TableTestBase, isStreamingMode: Boolean) 
     if (!file.exists() || "true".equalsIgnoreCase(System.getenv(PLAN_TEST_FORCE_OVERWRITE))) {
       Files.deleteIfExists(path)
       file.getParentFile.mkdirs()
-      assertTrue(file.createNewFile())
+      assertThat(file.createNewFile()).isTrue
       val prettyJson = TableTestUtil.getPrettyJson(jsonPlanWithoutFlinkVersion)
       Files.write(path, prettyJson.getBytes)
       fail(s"$testMethodFileName regenerated.")
     } else {
       val expected = String.join("\n", Files.readAllLines(path))
-      assertEquals(
-        TableTestUtil.replaceExecNodeId(TableTestUtil.getPrettyJson(expected)),
-        TableTestUtil.replaceExecNodeId(TableTestUtil.getPrettyJson(jsonPlanWithoutFlinkVersion))
-      )
+      assertThat(TableTestUtil.replaceExecNodeId(TableTestUtil.getPrettyJson(jsonPlanWithoutFlinkVersion)))
+        .isEqualTo(TableTestUtil.replaceExecNodeId(TableTestUtil.getPrettyJson(expected)))
       // check json serde round trip as well
       val expectedWithFlinkVersion = JsonTestUtils.writeToString(
         JsonTestUtils
           .setFlinkVersion(JsonTestUtils.readFromString(expected), FlinkVersion.current()))
-      assertEquals(
-        TableTestUtil.replaceExecNodeId(TableTestUtil.getFormattedJson(expectedWithFlinkVersion)),
-        TableTestUtil.replaceExecNodeId(
-          TableTestUtil.getFormattedJson(
-            getPlanner
-              .loadPlan(PlanReference.fromJsonString(expectedWithFlinkVersion))
-              .asJsonString()))
-      )
+      assertThat(TableTestUtil.replaceExecNodeId(
+        TableTestUtil.getFormattedJson(
+          getPlanner
+            .loadPlan(PlanReference.fromJsonString(expectedWithFlinkVersion))
+            .asJsonString())))
+        .isEqualTo(TableTestUtil.replaceExecNodeId(TableTestUtil.getFormattedJson(expectedWithFlinkVersion)))
     }
   }
 
@@ -1127,16 +1109,16 @@ abstract class TableTestUtilBase(test: TableTestBase, isStreamingMode: Boolean) 
   def assertEqualsOrExpand(tag: String, actual: String, expand: Boolean = true): Unit = {
     val expected = s"$${$tag}"
     if (!expand) {
-      diffRepository.assertEquals(test.name.getMethodName, tag, expected, actual)
+      diffRepository.assertEquals(test.testInfo.getDisplayName, tag, expected, actual)
       return
     }
-    val expanded = diffRepository.expand(test.name.getMethodName, tag, expected)
+    val expanded = diffRepository.expand(test.testInfo.getDisplayName, tag, expected)
     if (expanded != null && !expanded.equals(expected)) {
       // expected does exist, check result
-      diffRepository.assertEquals(test.name.getMethodName, tag, expected, actual)
+      diffRepository.assertEquals(test.testInfo.getDisplayName, tag, expected, actual)
     } else {
       // expected does not exist, update
-      diffRepository.expand(test.name.getMethodName, tag, actual)
+      diffRepository.expand(test.testInfo.getDisplayName, tag, actual)
     }
   }
 }

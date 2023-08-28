@@ -32,6 +32,7 @@ import org.apache.flink.table.planner.utils.BatchTableTestUtil;
 import org.apache.flink.table.planner.utils.StreamTableTestUtil;
 import org.apache.flink.table.planner.utils.TableTestBase;
 import org.apache.flink.table.planner.utils.TableTestUtil;
+import org.apache.flink.testutils.junit.utils.TempDirUtils;
 import org.apache.flink.util.FileUtils;
 
 import org.junit.Test;
@@ -135,7 +136,7 @@ public class MultipleInputNodeCreationProcessorTest extends TableTestBase {
 
     private void createTestFileSource(TableEnvironment tEnv, String name, String runtimeSource)
             throws IOException {
-        File file = tempFolder().newFile();
+        File file = TempDirUtils.newFolder(tempFolder());
         file.delete();
         file.createNewFile();
         FileUtils.writeFileUtf8(file, "1\n2\n3\n");

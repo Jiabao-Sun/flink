@@ -25,14 +25,14 @@ import org.apache.flink.table.planner.utils.{StreamTableTestUtil, TableTestBase,
 import org.apache.calcite.plan.RelOptRule
 import org.apache.calcite.plan.hep.HepMatchOrder
 import org.apache.calcite.tools.RuleSets
-import org.junit.{Before, Test}
+import org.junit.jupiter.api.{BeforeEach, Test}
 
 /** Test for [[LogicalCorrelateToJoinFromTemporalTableRule]]. */
 class LogicalCorrelateToJoinFromTemporalTableRuleTest extends TableTestBase {
 
   protected val util: StreamTableTestUtil = streamTestUtil()
 
-  @Before
+  @BeforeEach
   def setup(): Unit = {
     util.addTable("""
                     |CREATE TABLE T1 (

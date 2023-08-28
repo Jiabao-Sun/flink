@@ -22,8 +22,8 @@ import org.apache.flink.table.api._
 import org.apache.flink.table.api.bridge.scala._
 import org.apache.flink.table.planner.runtime.utils.JavaUserDefinedTableFunctions.StringSplit
 import org.apache.flink.table.planner.utils.{BatchTableTestUtil, TableTestBase}
+import org.junit.jupiter.api.Test
 
-import org.junit.Test
 
 abstract class SemiAntiJoinTestBase extends TableTestBase {
 

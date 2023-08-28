@@ -18,9 +18,8 @@
 package org.apache.flink.table.planner.plan.schema
 
 import org.apache.flink.table.planner.calcite.{FlinkTypeFactory, FlinkTypeSystem}
-
-import org.junit.Assert.assertEquals
-import org.junit.Test
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 
 /** Tests for TimeIndicatorRelDataType. */
 class TimeIndicatorRelDataTypeTest {
@@ -30,15 +29,12 @@ class TimeIndicatorRelDataTypeTest {
     val typeFactory = new FlinkTypeFactory(
       classOf[TimeIndicatorRelDataTypeTest].getClassLoader,
       FlinkTypeSystem.INSTANCE)
-    assertEquals(
-      "TIMESTAMP_LTZ(3) *PROCTIME* NOT NULL",
-      typeFactory.createProctimeIndicatorType(false).getFullTypeString)
-    assertEquals(
-      "TIMESTAMP(3) *ROWTIME* NOT NULL",
-      typeFactory.createRowtimeIndicatorType(false, false).getFullTypeString)
-    assertEquals(
-      "TIMESTAMP_LTZ(3) *ROWTIME* NOT NULL",
-      typeFactory.createRowtimeIndicatorType(false, true).getFullTypeString)
+
+    assertThat(typeFactory.createProctimeIndicatorType(false).getFullTypeString)
+      .isEqualTo("TIMESTAMP(3) *PROCTIME* NOT NULL")
+    assertThat(typeFactory.createRowtimeIndicatorType(false, false).getFullTypeString)
+      .isEqualTo("TIMESTAMP_LTZ(3) *ROWTIME* NOT NULL")
+    assertThat(typeFactory.createRowtimeIndicatorType(false, true).getFullTypeString)
   }
 
 }

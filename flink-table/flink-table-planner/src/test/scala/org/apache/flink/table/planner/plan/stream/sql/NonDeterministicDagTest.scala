@@ -35,14 +35,15 @@ import org.apache.flink.table.sinks.UpsertStreamTableSink
 import org.apache.flink.table.types.DataType
 import org.apache.flink.table.types.logical.{BigIntType, IntType, VarCharType}
 import org.apache.flink.table.types.utils.TypeConversions
-
-import org.junit.{Before, Test}
+import org.apache.flink.testutils.junit.extensions.parameterized.ParameterizedTestExtension
+import org.junit.jupiter.api.extension.ExtendWith
+import org.junit.jupiter.api.{BeforeEach, TestTemplate}
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
 import java.util
 
-@RunWith(classOf[Parameterized])
+@ExtendWith(classOf[ParameterizedTestExtension])
 class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUpdateStrategy)
   extends TableTestBase {
 
@@ -50,7 +51,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
   private val tryResolve =
     nonDeterministicUpdateStrategy == NonDeterministicUpdateStrategy.TRY_RESOLVE
 
-  @Before
+  @BeforeEach
   def before(): Unit = {
     util.tableConfig.getConfiguration.set(
       OptimizerConfigOptions.TABLE_OPTIMIZER_NONDETERMINISTIC_UPDATE_STRATEGY,
@@ -217,7 +218,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     util.tableEnv.createTemporaryFunction("str_split", new StringSplit())
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithMetaSinkWithPk(): Unit = {
     util.verifyExecPlanInsert(s"""
                                  |insert into sink_with_pk
@@ -225,7 +226,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |from cdc_with_meta
                                  |""".stripMargin)
   }
-  @Test
+  @TestTemplate
   def testNonDeterministicProjectionWithSinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -249,7 +250,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                 |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithMetaSinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -263,7 +264,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithMetaLegacySinkWithPk(): Unit = {
     val sinkWithPk = new TestingUpsertSink(
       Array("a"),
@@ -282,7 +283,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithMetaLegacySinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -304,7 +305,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithMetaSinkWithCompositePk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -318,7 +319,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithMetaRenameSinkWithCompositePk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -346,7 +347,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testSourceWithComputedColumnSinkWithPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -363,7 +364,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testSourceWithComputedColumnMultiSink(): Unit = {
     val stmtSet = util.tableEnv.createStatementSet()
     stmtSet.addInsertSql(s"""
@@ -386,7 +387,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     util.verifyExecPlan(stmtSet)
   }
 
-  @Test
+  @TestTemplate
   def testCdcCorrelateNonDeterministicFuncSinkWithPK(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -401,7 +402,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcCorrelateNonDeterministicFuncNoLeftOutput(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -416,7 +417,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcCorrelateNonDeterministicFuncNoRightOutput(): Unit = {
     util.verifyExecPlanInsert(s"""
                                  |insert into sink_with_pk
@@ -425,7 +426,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcCorrelateOnNonDeterministicCondition(): Unit = {
     // TODO update this after FLINK-7865 was fixed
     thrown.expectMessage("unexpected correlate variable $cor0 in the plan")
@@ -439,7 +440,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithMetaCorrelateSinkWithPk(): Unit = {
     // Under ignore mode, the generated execution plan may cause wrong result though
     // upsertMaterialize has been enabled in sink, because
@@ -455,7 +456,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithNonDeterministicFuncSinkWithPk(): Unit = {
     util.verifyExecPlanInsert(s"""
                                  |insert into sink_with_pk
@@ -464,7 +465,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithNonDeterministicFuncSinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -478,7 +479,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcWithNonDeterministicFilter(): Unit = {
     // TODO should throw error if tryResolve is true after FLINK-28737 was fixed
     util.verifyExecPlanInsert(s"""
@@ -489,7 +490,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithPkSinkWithPk(): Unit = {
     // The lookup key contains the dim table's pk, there will be no materialization.
     util.verifyExecPlanInsert(s"""
@@ -502,7 +503,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithoutPkSinkWithPk(): Unit = {
     // This case shows how costly is if the dim table does not define a pk.
     // The lookup key doesn't contain the dim table's pk, there will be two more costly
@@ -517,7 +518,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcLeftJoinDimWithPkSinkWithPk(): Unit = {
     // The lookup key contains the dim table's pk, there will be no materialization.
     util.verifyExecPlanInsert(s"""
@@ -530,7 +531,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithPkSinkWithoutPk(): Unit = {
     util.verifyExecPlanInsert(s"""
                                  |insert into sink_without_pk
@@ -542,7 +543,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithoutPkSinkWithoutPk(): Unit = {
     util.verifyExecPlanInsert(s"""
                                  |insert into sink_without_pk
@@ -554,7 +555,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithPkOnlySinkWithoutPk(): Unit = {
     // only select lookup key field, expect not affect NDU
     util.verifyExecPlanInsert(s"""
@@ -567,7 +568,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcLeftJoinDimWithoutPkSinkWithoutPk(): Unit = {
     util.verifyExecPlanInsert(
       s"""
@@ -580,7 +581,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithPkOutputNoPkSinkWithoutPk(): Unit = {
     // non lookup pk selected, expect materialize if tryResolve
     util.verifyExecPlanInsert(s"""
@@ -593,7 +594,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithPkNonDeterministicFuncSinkWithoutPk(): Unit = {
     if (tryResolve) {
       // only select lookup key field, but with ND-call, expect exception
@@ -611,7 +612,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithPkNonDeterministicLocalCondition(): Unit = {
     // use user defined function
     if (tryResolve) {
@@ -630,7 +631,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimWithPkNonDeterministicLocalCondition2(): Unit = {
     // use builtin temporal function
     if (tryResolve) {
@@ -650,7 +651,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinDimNonDeterministicRemainingCondition(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -669,7 +670,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testGroupByNonDeterministicFuncWithCdcSource(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -687,7 +688,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testGroupByNonDeterministicUdfWithCdcSource(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -703,7 +704,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testNestedAggWithNonDeterministicGroupingKeys(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -723,7 +724,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testGroupAggNonDeterministicFuncOnSourcePk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -741,7 +742,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testAggWithNonDeterministicFilterArgs(): Unit = {
     util.verifyExecPlanInsert(
       s"""
@@ -755,7 +756,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testAggWithNonDeterministicFilterArgsOnCdcSource(): Unit = {
     if (tryResolve) {
       // though original pk was selected and same as the sink's pk, but the valid_uv was
@@ -776,7 +777,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testAggWithNonDeterministicFilterArgsOnCdcSourceSinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -795,7 +796,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testNonDeterministicAggOnAppendSourceSinkWithPk(): Unit = {
     util.verifyExecPlanInsert(s"""
                                  |insert into sink_with_pk
@@ -808,7 +809,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testNonDeterministicAggOnAppendSourceSinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -826,7 +827,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testGlobalNonDeterministicAggOnAppendSourceSinkWithPk(): Unit = {
     util.verifyExecPlanInsert(s"""
                                  |insert into sink_with_pk
@@ -838,7 +839,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testGlobalNonDeterministicAggOnAppendSourceSinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -855,7 +856,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testUpsertSourceSinkWithPk(): Unit = {
     // contains normalize
     util.verifyExecPlanInsert(s"""
@@ -865,7 +866,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testUpsertSourceSinkWithoutPk(): Unit = {
     // contains normalize
     util.verifyExecPlanInsert(s"""
@@ -875,7 +876,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testMultiOverWithNonDeterministicUdafSinkWithPk(): Unit = {
     util.verifyExecPlanInsert(
       """
@@ -892,7 +893,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testOverWithNonDeterministicUdafSinkWithoutPk(): Unit = {
     util.verifyExecPlanInsert(
       """
@@ -907,7 +908,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testMultiOverWithNonDeterministicAggFilterSinkWithPk(): Unit = {
     // agg with filter is not supported currently, should update this after it is supported.
     thrown.expectMessage("OVER must be applied to aggregate function")
@@ -927,7 +928,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testAppendRankOnMultiOverWithNonDeterministicUdafSinkWithPk(): Unit = {
     util.verifyExecPlanInsert(
       """
@@ -951,7 +952,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testAppendRankOnMultiOverWithNonDeterministicUdafSinkWithoutPk(): Unit = {
     util.verifyExecPlanInsert(
       """
@@ -975,7 +976,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testUpdateRankOutputRowNumberSinkWithPk(): Unit = {
     util.tableEnv.executeSql(s"""
                                 | create temporary view v1 as
@@ -995,7 +996,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testRetractRankOutputRowNumberSinkWithPk(): Unit = {
     util.tableEnv.executeSql(s"""
                                 | create temporary view v1 as
@@ -1015,7 +1016,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testUnionSinkWithCompositePk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -1032,7 +1033,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testUnionAllSinkWithCompositePk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -1049,7 +1050,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testUnionAllSinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -1066,7 +1067,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinWithNonDeterministicCondition(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -1084,7 +1085,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
                                  |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testProctimeIntervalJoinSinkWithoutPk(): Unit = {
     util.verifyExecPlanInsert("""
                                 |insert into sink_without_pk
@@ -1093,7 +1094,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
       """.stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcProctimeIntervalJoinOnPkSinkWithoutPk(): Unit = {
     util.verifyExecPlanInsert("""
                                 |insert into sink_without_pk
@@ -1104,7 +1105,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
       """.stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcProctimeIntervalJoinOnNonPkSinkWithoutPk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage("can not satisfy the determinism requirement")
@@ -1119,7 +1120,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
       """.stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcRowtimeIntervalJoinSinkWithoutPk(): Unit = {
     util.verifyExecPlanInsert(
       """
@@ -1129,7 +1130,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
       """.stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcRowtimeIntervalJoinSinkWithPk(): Unit = {
     util.verifyExecPlanInsert(
       """
@@ -1139,7 +1140,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
       """.stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testJoinKeyContainsUk(): Unit = {
     util.verifyExecPlan(
       s"""
@@ -1156,7 +1157,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testJoinHasBothSidesUk(): Unit = {
     util.verifyExecPlan(
       s"""
@@ -1173,7 +1174,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testJoinHasBothSidesUkSinkWithoutPk(): Unit = {
     if (tryResolve) {
       // sink require all columns be deterministic though join has both side uk
@@ -1197,7 +1198,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testJoinHasSingleSideUk(): Unit = {
     if (tryResolve) {
       // the input side without uk requires all columns be deterministic
@@ -1219,7 +1220,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testSemiJoinKeyContainsUk(): Unit = {
     util.verifyExecPlan(
       s"""
@@ -1234,7 +1235,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testAntiJoinKeyContainsUk(): Unit = {
 
     util.verifyExecPlan(
@@ -1250,7 +1251,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testSemiJoinWithNonDeterministicConditionSingleSideHasUk(): Unit = {
     if (tryResolve) {
       thrown.expectMessage(
@@ -1270,7 +1271,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testCdcJoinWithNonDeterministicOutputSinkWithPk(): Unit = {
     // a real case from FLINK-27369
     if (tryResolve) {
@@ -1331,7 +1332,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
          |""".stripMargin)
   }
 
-  @Test
+  @TestTemplate
   def testProctimeDedupOnCdcWithMetadataSinkWithPk(): Unit = {
     // TODO this should be updated after StreamPhysicalDeduplicate supports consuming update
     thrown.expectMessage(
@@ -1351,7 +1352,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testProctimeDedupOnCdcWithMetadataSinkWithoutPk(): Unit = {
     // TODO this should be updated after StreamPhysicalDeduplicate supports consuming update
     thrown.expectMessage(
@@ -1371,7 +1372,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testRowtimeDedupOnCdcWithMetadataSinkWithPk(): Unit = {
     // TODO this should be updated after StreamPhysicalDeduplicate supports consuming update
     thrown.expectMessage(
@@ -1391,7 +1392,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testWindowDedupOnCdcWithMetadata(): Unit = {
     // TODO this should be updated after StreamPhysicalWindowDeduplicate supports consuming update
     thrown.expectMessage(
@@ -1424,7 +1425,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
 
   }
 
-  @Test
+  @TestTemplate
   def testNestedSourceWithMultiSink(): Unit = {
     val ddl =
       s"""
@@ -1497,7 +1498,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     util.verifyExecPlan(stmtSet)
   }
 
-  @Test
+  @TestTemplate
   def testMultiSinkOnJoinedView(): Unit = {
     util.tableEnv.executeSql("""
                                |create temporary table src1 (
@@ -1582,7 +1583,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     util.verifyExecPlan(stmtSet)
   }
 
-  @Test
+  @TestTemplate
   def testMatchRecognizeSinkWithPk(): Unit = {
     util.tableEnv.executeSql(s"""
                                 |create temporary view v1 as
@@ -1610,7 +1611,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testMatchRecognizeWithNonDeterministicConditionOnCdcSinkWithPk(): Unit = {
     // TODO this should be updated after StreamPhysicalMatch supports consuming updates
     thrown.expectMessage("Match Recognize doesn't support consuming update and delete changes")
@@ -1636,7 +1637,7 @@ class NonDeterministicDagTest(nonDeterministicUpdateStrategy: NonDeterministicUp
     )
   }
 
-  @Test
+  @TestTemplate
   def testMatchRecognizeOnCdcWithMetaDataSinkWithPk(): Unit = {
     // TODO this should be updated after StreamPhysicalMatch supports consuming updates
     thrown.expectMessage("Match Recognize doesn't support consuming update and delete changes")

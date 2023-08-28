@@ -27,7 +27,7 @@ import org.apache.flink.table.planner.utils.{BatchTableTestUtil, TableConfigUtil
 import org.apache.calcite.plan.hep.HepMatchOrder
 import org.apache.calcite.rel.rules.CoreRules
 import org.apache.calcite.tools.RuleSets
-import org.junit.{Before, Test}
+import org.junit.jupiter.api.{BeforeEach, Test}
 import org.junit.runner.RunWith
 import org.junit.runners.Parameterized
 
@@ -44,7 +44,7 @@ class PushPartitionIntoLegacyTableSourceScanRuleTest(
   protected val util: BatchTableTestUtil = batchTestUtil()
 
   @throws(classOf[Exception])
-  @Before
+  @BeforeEach
   def setup(): Unit = {
     util.buildBatchProgram(FlinkBatchProgram.DEFAULT_REWRITE)
     val calciteConfig = TableConfigUtils.getCalciteConfig(util.tableEnv.getConfig)

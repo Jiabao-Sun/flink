@@ -23,8 +23,8 @@ import org.apache.flink.table.api.{TableException, Types, _}
 import org.apache.flink.table.planner.plan.utils.JavaUserDefinedAggFunctions.{VarSum1AggFunction, VarSum2AggFunction}
 import org.apache.flink.table.planner.utils.{BatchTableTestUtil, TableTestBase}
 import org.apache.flink.table.runtime.typeutils.DecimalDataTypeInfo
-
-import org.junit.Test
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.Test
 
 abstract class AggregateTestBase extends TableTestBase {
 
@@ -136,9 +136,10 @@ abstract class AggregateTestBase extends TableTestBase {
   @Test
   def testCannotCountOnMultiFields(): Unit = {
     val sql = "SELECT b, COUNT(a, c) FROM MyTable1 GROUP BY b"
-    thrown.expect(classOf[TableException])
-    thrown.expectMessage("We now only support the count of one field")
-    util.verifyExecPlan(sql)
+
+    assertThatThrownBy(() => util.verifyExecPlan(sql))
+      .hasMessage("We now only support the count of one field")
+      .isInstanceOf[TableException]
   }
 
   @Test
