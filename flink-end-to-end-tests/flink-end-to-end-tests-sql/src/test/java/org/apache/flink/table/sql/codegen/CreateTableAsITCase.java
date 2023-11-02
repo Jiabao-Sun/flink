@@ -39,8 +39,8 @@ public class CreateTableAsITCase extends SqlITCaseBase {
         runAndCheckSQL(
                 "create_table_as_e2e.sql",
                 Arrays.asList(
-                        "{\"before\":null,\"after\":{\"user_name\":\"Alice\",\"order_cnt\":1},\"op\":\"c\"}",
-                        "{\"before\":null,\"after\":{\"user_name\":\"Bob\",\"order_cnt\":2},\"op\":\"c\"}"));
+                        "{\"user_name\":\"Alice\",\"order_cnt\":1}",
+                        "{\"user_name\":\"Bob\",\"order_cnt\":2}"));
     }
 
     @Test
@@ -57,7 +57,7 @@ public class CreateTableAsITCase extends SqlITCaseBase {
             throws Exception {
         clusterController.submitSQLJob(
                 new SQLJobSubmission.SQLJobSubmissionBuilder(sqlLines)
-                        .addJar(SQL_TOOL_BOX_JAR)
+                        .addJars(SQL_CONNECTOR_UPSERT_TEST_JAR, SQL_TOOL_BOX_JAR)
                         .build(),
                 Duration.ofMinutes(2L));
     }

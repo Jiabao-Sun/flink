@@ -23,14 +23,18 @@ SET table.exec.mini-batch.enabled = true;
 SET table.exec.mini-batch.size = 5;
 SET table.exec.mini-batch.allow-latency = 2s;
 
-CREATE TABLE JsonTable
-WITH (
-  'connector' = 'filesystem',
-  'path' = '$RESULT',
-  'sink.rolling-policy.rollover-interval' = '2s',
-  'sink.rolling-policy.check-interval' = '2s',
-  'format' = 'debezium-json'
-)
-AS SELECT user_name, count_agg(order_id) AS order_cnt
+CREATE TABLE JsonTable (
+    user_name STRING,
+    order_cnt BIGINT,
+    PRIMARY KEY (user_name) NOT ENFORCED
+) WITH (
+  'connector' = 'upsert-files',
+  'output-filepath' = '$RESULT',
+  'key.format' = 'json',
+  'value.format' = 'json'
+);
+
+INSERT INTO JsonTable
+SELECT user_name, count_agg(order_id) AS order_cnt
 FROM (VALUES (1, 'Bob'), (2, 'Bob'), (1, 'Alice')) T(order_id, user_name)
 GROUP BY user_name;

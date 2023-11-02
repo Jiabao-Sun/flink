@@ -18,8 +18,10 @@
 
 package org.apache.flink.table.sql.codegen;
 
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.api.common.time.Deadline;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connector.upserttest.sink.UpsertTestFileUtil;
 import org.apache.flink.test.resources.ResourceTestUtils;
 import org.apache.flink.tests.util.flink.ClusterController;
 import org.apache.flink.tests.util.flink.FlinkResource;
@@ -59,6 +61,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public abstract class SqlITCaseBase extends TestLogger {
     private static final Logger LOG = LoggerFactory.getLogger(SqlITCaseBase.class);
 
+    private static final SimpleStringSchema STRING_SCHEMA = new SimpleStringSchema();
+
     @Parameterized.Parameters(name = "executionMode")
     public static Collection<String> data() {
         return Arrays.asList("streaming", "batch");
@@ -80,6 +84,9 @@ public abstract class SqlITCaseBase extends TestLogger {
 
     protected static final Path SQL_TOOL_BOX_JAR =
             ResourceTestUtils.getResource(".*SqlToolbox.jar");
+
+    protected static final Path SQL_CONNECTOR_UPSERT_TEST_JAR =
+            ResourceTestUtils.getResource(".*flink-test-utils.*\\.jar");
 
     public SqlITCaseBase(String executionMode) {
         this.executionMode = executionMode;
@@ -151,16 +158,19 @@ public abstract class SqlITCaseBase extends TestLogger {
             throws Exception {
         boolean success = false;
         final Deadline deadline = Deadline.fromNow(Duration.ofSeconds(20));
-        List<String> lines = null;
-        int resultSize = expectedItems.size();
+        Collection<String> lines = null;
+        File resultFile = resultPath.toFile();
         while (deadline.hasTimeLeft()) {
-            if (Files.exists(resultPath)) {
-                lines = readResultFiles(resultPath);
-                if (lines.size() == resultSize) {
+            if (resultFile.exists()) {
+                lines =
+                        UpsertTestFileUtil.readRecords(
+                                        resultPath.toFile(), STRING_SCHEMA, STRING_SCHEMA)
+                                .values();
+                try {
+                    assertThat(lines).containsExactlyInAnyOrderElementsOf(expectedItems);
                     success = true;
-                    assertThat(lines).hasSameElementsAs(expectedItems);
                     break;
-                } else {
+                } catch (AssertionError e) {
                     LOG.info(
                             "The target result {} does not contain enough records, current {} records, left time: {}s",
                             resultPath,
@@ -176,18 +186,5 @@ public abstract class SqlITCaseBase extends TestLogger {
                 success,
                 String.format(
                         "Did not get expected results before timeout, actual result: %s.", lines));
-    }
-
-    private static List<String> readResultFiles(Path path) throws IOException {
-        File filePath = path.toFile();
-        // list all the non-hidden files
-        File[] files = filePath.listFiles((dir, name) -> !name.startsWith("."));
-        List<String> result = new ArrayList<>();
-        if (files != null) {
-            for (File file : files) {
-                result.addAll(Files.readAllLines(file.toPath()));
-            }
-        }
-        return result;
     }
 }
